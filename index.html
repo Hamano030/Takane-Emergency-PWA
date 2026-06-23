@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>緊急連絡システム</title>
+<link rel="manifest" href="manifest.json">
+<style>
+body{font-family:sans-serif;margin:10px;max-width:800px;}
+h2{text-align:center;}
+label{display:block;margin-top:10px;font-weight:bold;}
+input,select,textarea{width:100%;padding:10px;box-sizing:border-box;font-size:16px;}
+button{width:100%;padding:15px;margin-top:10px;font-size:18px;}
+#createBtn{background:#1976d2;color:white;}
+#sendBtn{background:#d32f2f;color:white;}
+#copyBtn{background:#388e3c;color:white;}
+textarea{height:250px;}
+</style>
+</head>
+<body>
+
+<h2>緊急連絡システム</h2>
+
+<label>発生日時</label>
+<input id="datetime" readonly>
+
+<label>GPS状態</label>
+<input id="gpsStatus" readonly>
+
+<label>緯度</label>
+<input id="lat" readonly>
+
+<label>経度</label>
+<input id="lon" readonly>
+
+<button onclick="getLocation()">GPS再取得</button>
+
+<label>現場名</label>
+<input id="genba">
+
+<label>負傷者氏名</label>
+<select id="name">
+<option></option>
+<option>三浦愛子</option>
+<option>齋藤健太</option>
+<option>上田優介</option>
+<option>本田茂徳</option>
+</select>
+
+<label>発生の原因</label>
+<input id="injury">
+
+<label>意識</label>
+<select id="consciousness">
+<option>あり</option>
+<option>なし</option>
+</select>
+
+<label>呼吸</label>
+<select id="breathing">
+<option>あり</option>
+<option>なし</option>
+</select>
+
+<label>出血</label>
+<select id="bleeding">
+<option>多い</option>
+<option>少ない</option>
+<option>なし</option>
+</select>
+
+<label>特記事項</label>
+<input id="remarks">
+
+<label>引き渡し方法</label>
+<select id="handover">
+<option>ヘリコプター</option>
+<option>現場近く引渡し</option>
+<option>救急車引継ぎ場所</option>
+</select>
+
+<label>連絡者</label>
+<select id="reporter">
+<option></option>
+<option>三浦愛子</option>
+<option>齋藤健太</option>
+<option>上田優介</option>
+<option>本田茂徳</option>
+</select>
+
+<button id="createBtn" onclick="createMessage()">連絡文作成</button>
+<button id="copyBtn" onclick="copyMessage()">コピー</button>
+<button id="sendBtn" onclick="sendSMS()">事務所へ送信</button>
+
+<h3>送信内容</h3>
+<textarea id="result" readonly></textarea>
+
+<script>
+if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("service-worker.js");
+}
+
+window.onload=function(){
+    const now=new Date();
+    document.getElementById("datetime").value=now.toLocaleString("ja-JP");
+    getLocation();
+}
+
+function getLocation(){
+    document.getElementById("gpsStatus").value="取得中";
+
+    navigator.geolocation.getCurrentPosition(
+        function(position){
+            document.getElementById("gpsStatus").value="取得成功";
+            document.getElementById("lat").value=position.coords.latitude.toFixed(6);
+            document.getElementById("lon").value=position.coords.longitude.toFixed(6);
+        },
+        function(){
+            document.getElementById("gpsStatus").value="取得失敗";
+            document.getElementById("lat").value="";
+            document.getElementById("lon").value="";
+        },
+        {
+            enableHighAccuracy:true,
+            timeout:10000,
+            maximumAge:0
+        }
+    );
+}
+
+function createMessage(){
+
+    let lat=document.getElementById("lat").value;
+    let lon=document.getElementById("lon").value;
+
+    let mapUrl="なし";
+
+    if(lat!=="" && lon!==""){
+        mapUrl="https://maps.google.com/?q="+lat+","+lon;
+    }
+
+    const text=`【緊急連絡】
+
+発信：新潟班
+
+発生日時：
+${document.getElementById("datetime").value}
+
+場所：
+${document.getElementById("genba").value}
+
+GPS状態：
+${document.getElementById("gpsStatus").value}
+
+緯度：
+${lat}
+
+経度：
+${lon}
+
+Googleマップ：
+${mapUrl}
+
+負傷者（氏名）：
+${document.getElementById("name").value}
+
+発生の原因：
+${document.getElementById("injury").value}
+
+意識：
+${document.getElementById("consciousness").value}
+
+呼吸：
+${document.getElementById("breathing").value}
+
+出血：
+${document.getElementById("bleeding").value}
+
+特記事項：
+${document.getElementById("remarks").value}
+
+引き渡し方法：
+${document.getElementById("handover").value}
+
+連絡者：
+${document.getElementById("reporter").value}`;
+
+    document.getElementById("result").value=text;
+}
+
+function copyMessage(){
+    navigator.clipboard.writeText(document.getElementById("result").value);
+    alert("コピーしました");
+}
+
+function sendSMS(){
+
+    createMessage();
+
+    const text=document.getElementById("result").value;
+
+    // 送信先（将来2人目の番号を実番号に変更してください）
+    const phone1="09085950696";
+    const phone2="090XXXXXXXX";
+
+    const recipients=phone1;
+
+    const ua=navigator.userAgent;
+
+    if(/iPhone|iPad|iPod/i.test(ua)){
+        window.location.href="sms:"+recipients+"&body="+encodeURIComponent(text);
+    }else{
+        window.location.href="sms:"+recipients+"?body="+encodeURIComponent(text);
+    }
+}
+</script>
+
+</body>
+</html>
